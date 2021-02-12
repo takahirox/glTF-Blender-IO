@@ -16,7 +16,7 @@ import bpy
 from typing import List, Optional, Tuple
 import numpy as np
 
-from .gltf2_blender_export_keys import NORMALS, MORPH_NORMAL, TANGENTS, MORPH_TANGENT, MORPH
+from .gltf2_blender_export_keys import NORMALS, MORPH_NORMAL, TANGENTS, MORPH_TANGENT, MORPH, UNUSED_MATERIALS
 
 from io_scene_gltf2.blender.exp.gltf2_blender_gather_cache import cached
 from io_scene_gltf2.blender.exp import gltf2_blender_extract
@@ -48,7 +48,7 @@ def gather_primitives(
     primitives = []
 
     blender_primitives = __gather_cache_primitives(blender_mesh, library, blender_object,
-        vertex_groups, modifiers, export_settings)
+        vertex_groups, modifiers, material_names, export_settings)
 
     for internal_primitive in blender_primitives:
         material_idx = internal_primitive['material']
@@ -69,7 +69,7 @@ def gather_primitives(
 
         primitive = gltf2_io.MeshPrimitive(
             attributes=internal_primitive['attributes'],
-            extensions=None,
+            extensions=internal_primitive['extensions'],
             extras=None,
             indices=internal_primitive['indices'],
             material=material,
@@ -87,6 +87,7 @@ def __gather_cache_primitives(
         blender_object: Optional[bpy.types.Object],
         vertex_groups: Optional[bpy.types.VertexGroups],
         modifiers: Optional[bpy.types.ObjectModifiers],
+        material_names: Tuple[str],
         export_settings
 ) -> List[dict]:
     """
@@ -100,6 +101,7 @@ def __gather_cache_primitives(
     for internal_primitive in blender_primitives:
         primitive = {
             "attributes": __gather_attributes(internal_primitive, blender_mesh, modifiers, export_settings),
+            "extensions": __gather_extensions(internal_primitive, blender_mesh, modifiers, material_names, export_settings),
             "indices": __gather_indices(internal_primitive, blender_mesh, modifiers, export_settings),
             "material": internal_primitive['material'],
             "targets": __gather_targets(internal_primitive, blender_mesh, modifiers, export_settings)
@@ -144,6 +146,35 @@ def __gather_indices(blender_primitive, blender_mesh, modifiers, export_settings
 def __gather_attributes(blender_primitive, blender_mesh, modifiers, export_settings):
     return gltf2_blender_gather_primitive_attributes.gather_primitive_attributes(blender_primitive, export_settings)
 
+def __gather_extensions(blender_primitive, blender_mesh, modifiers, material_names, export_settings):
+    extensions = {}
+
+    if export_settings[UNUSED_MATERIALS]:
+        mapping_dict = {}
+        mappings = []
+        for idx, material_name in enumerate(material_names):
+            material = None
+            blender_material = None
+            if material_name is not None:
+                blender_material = bpy.data.materials[material_name]
+            if blender_material is not None:
+                material = gltf2_blender_gather_materials.gather_material(
+                    blender_material,
+                    export_settings,
+                )
+            if material is not None:
+                if not material in mapping_dict:
+                    mapping_dict[material] = []
+                mapping_dict[material].append(idx)
+
+        if mapping_dict:
+            mappings = []
+            for material in mapping_dict.keys():
+                mappings.append({"material": material, "variants": mapping_dict[material]})
+            extensions["KHR_materials_variants"] = {}
+            extensions["KHR_materials_variants"]["mappings"] = mappings
+
+    return extensions if extensions else None
 
 def __gather_targets(blender_primitive, blender_mesh, modifiers, export_settings):
     if export_settings[MORPH]:

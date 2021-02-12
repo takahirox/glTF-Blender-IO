@@ -367,6 +367,16 @@ def do_primitives(gltf, mesh_idx, skin_idx, mesh, ob):
 
             f += prim.num_faces
 
+            if prim.extensions is not None and 'KHR_materials_variants' in prim.extensions:
+                for mapping in prim.extensions['KHR_materials_variants'].get('mappings'):
+                    variant_pymaterial = gltf.data.materials[mapping.get('material')]
+                    vertex_color = 'COLOR_0' if 'COLOR_0' in prim.attributes else None
+                    if vertex_color not in variant_pymaterial.blender_material:
+                        BlenderMaterial.create(gltf, mapping.get('material'), vertex_color)
+                    variant_material_name = variant_pymaterial.blender_material[vertex_color]
+                    if variant_material_name not in mesh.materials:
+                        mesh.materials.append(bpy.data.materials[variant_material_name])
+
         mesh.polygons.foreach_set('material_index', material_indices)
 
     # ----

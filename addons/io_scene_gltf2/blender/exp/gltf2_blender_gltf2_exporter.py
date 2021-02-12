@@ -153,6 +153,26 @@ class GlTF2Exporter:
         self.__gltf.extensions_required.append('KHR_draco_mesh_compression')
         self.__gltf.extensions_used.append('KHR_draco_mesh_compression')
 
+    def add_materials_variants_extension(self):
+        """
+        """
+        max_variant_index = -1
+        for mesh in self.__gltf.meshes:
+            for prim in mesh.primitives:
+                if prim.extensions is not None and 'KHR_materials_variants' in prim.extensions:
+                    for mapping in prim.extensions['KHR_materials_variants']['mappings']:
+                        if mapping['variants'][-1] > max_variant_index:
+                            max_variant_index = mapping['variants'][-1]
+
+        if max_variant_index == -1:
+            return
+
+        variants = []
+        for i in range(max_variant_index + 1):
+            variants.append({'name': 'variant{}'.format(i)})
+        self.__gltf.extensions['KHR_materials_variants'] = {"variants": variants}
+        self.__gltf.extensions_used.append('KHR_materials_variants')
+
     def finalize_images(self):
         """
         Write all images.

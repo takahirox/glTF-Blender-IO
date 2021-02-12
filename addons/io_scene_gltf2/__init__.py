@@ -546,6 +546,8 @@ class ExportGLTF2_Base:
             os.path.splitext(os.path.basename(self.filepath))[0] + '.bin'
         )
 
+        export_settings['gltf_unused_materials'] = True # temporal
+
         user_extensions = []
         pre_export_callbacks = []
         post_export_callbacks = []

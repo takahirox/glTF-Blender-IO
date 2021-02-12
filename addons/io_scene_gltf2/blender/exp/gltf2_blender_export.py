@@ -84,6 +84,9 @@ def __gather_gltf(exporter, export_settings):
     for animation in animations:
         exporter.add_animation(animation)
 
+    if export_settings['gltf_unused_materials']:
+        exporter.add_materials_variants_extension()
+
 
 def __create_buffer(exporter, export_settings):
     buffer = bytes()
